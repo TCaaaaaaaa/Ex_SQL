@@ -4,8 +4,8 @@
       <a-col flex="160px" style="margin: 0 auto">
         <RouterLink to="/">
           <a-row align="middle">
-            <img src="./assets/logo.png" alt="可拓学SQL教育平台" class="logo" />
-            <span class="title">可拓学SQL教育平台</span>
+            <img src="./assets/logo.png" alt="可拓SQL教育平台" class="logo" />
+            <span class="title">可拓SQL教育平台</span>
           </a-row>
         </RouterLink>
       </a-col>
@@ -198,12 +198,12 @@ const handleFileChange = (e: Event) => {
 }
 
 .logo {
-  width: 56px;
+  width: 54px;
 }
 
 .title {
-  margin-left: 8px;
-  font-size: 20px;
+  margin-left: 6px;
+  font-size: 18px;
   color: #000;
 }
 
