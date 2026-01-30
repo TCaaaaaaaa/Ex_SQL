@@ -4,7 +4,8 @@
     <a-row :gutter="[16, 16]">
       <a-col :md="12" :xs="24">
         <sql-editor
-          :level="allLevels[0]"
+          v-if="globalStore.allLevels.length > 0"
+          :level="globalStore.allLevels[0]"
           :editor-style="{ height: 480 + 'px' }"
           :on-submit="onSubmit"
         />
@@ -33,8 +34,9 @@ import SqlEditor from "../components/SqlEditor.vue";
 import { ref } from "vue";
 import { QueryExecResult } from "sql.js";
 import SqlResult from "../components/SqlResult.vue";
-import { allLevels } from "../levels";
+import { useGlobalStore } from "../core/globalStore";
 
+const globalStore = useGlobalStore();
 const result = ref<QueryExecResult[]>([]);
 const sqlHistoryList = ref<any>([]);
 

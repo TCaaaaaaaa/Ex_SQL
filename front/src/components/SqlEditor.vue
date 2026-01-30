@@ -93,15 +93,15 @@ const doReset = () => {
 /**
  * 提交结果
  */
-const doSubmit = () => {
+const doSubmit = async () => {
   if (!inputEditor.value) {
     return;
   }
   const inputStr = toRaw(inputEditor.value).getValue();
   console.log("inputStr", inputStr);
   try {
-    const result = runSQL(db.value, inputStr);
-    const answerResult = runSQL(db.value, level.value.answer);
+    const result = await runSQL(db.value, inputStr);
+    const answerResult = await runSQL(db.value, level.value.answer);
     // 向外层传递结果
     onSubmit?.value(inputStr, result, answerResult);
   } catch (error: any) {

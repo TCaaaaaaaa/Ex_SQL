@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia';
 import { KnowledgePoint, LevelKnowledgeMap, KnowledgeDependency } from './knowledgeGraph';
-import { allLevels } from '../levels';
 import { message } from 'ant-design-vue';
 import { useUserStore } from './userStore';
+import { useGlobalStore } from './globalStore';
 
 // 关联函数参数
 const W1 = 1.5; // 正确率权重 (Score)
@@ -200,8 +200,9 @@ export const useKnowledgeStore = defineStore('knowledge', {
 
     // 辅助：根据 KP 找关卡
     findLevelByKp(kp: string) {
+      const globalStore = useGlobalStore();
       // 简单遍历所有关卡找到第一个匹配的 (实际可以找没做过的)
-      for (const level of allLevels) {
+      for (const level of globalStore.allLevels) {
         if (LevelKnowledgeMap[level.key]?.includes(kp as KnowledgePoint)) {
           return level;
         }
@@ -211,7 +212,8 @@ export const useKnowledgeStore = defineStore('knowledge', {
 
     // 辅助：找相似关卡 (同 KP 但不同 Key)
     findSimilarLevel(kp: string, currentKey: string) {
-       for (const level of allLevels) {
+       const globalStore = useGlobalStore();
+       for (const level of globalStore.allLevels) {
         if (level.key !== currentKey && LevelKnowledgeMap[level.key]?.includes(kp as KnowledgePoint)) {
           return level;
         }

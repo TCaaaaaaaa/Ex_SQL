@@ -119,12 +119,16 @@ import {
   UploadOutlined
 } from "@ant-design/icons-vue";
 import { useUserStore } from "./core/userStore";
+import { useGlobalStore } from "./core/globalStore";
 import { message } from "ant-design-vue";
 import { exportUserData, importUserData } from "./core/dataManager";
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const globalStore = useGlobalStore();
+
+globalStore.init();
 
 const selectedKeys = computed(() => [route.path]);
 

@@ -58,11 +58,12 @@ import QuestionBoard from "../components/QuestionBoard.vue";
 import SqlResult from "../components/SqlResult.vue";
 import { computed, ref, watch } from "vue";
 import { QueryExecResult } from "sql.js";
-import { allLevels, getLevelByKey } from "../levels";
+import { getLevelByKey } from "../levels";
 import { checkResult, RESULT_STATUS_ENUM } from "../core/result";
 import CodeEditor from "../components/CodeEditor.vue";
 import { diagnoseSql, DiagnosisResult } from "../core/sqlDiagnosis";
 import { useKnowledgeStore } from "../core/knowledgeStore";
+import { useGlobalStore } from "../core/globalStore";
 import { Modal } from "ant-design-vue";
 import { useRouter } from "vue-router";
 
@@ -73,12 +74,13 @@ interface IndexPageProps {
 const props = defineProps<IndexPageProps>();
 const router = useRouter();
 const knowledgeStore = useKnowledgeStore();
+const globalStore = useGlobalStore();
 
 const level = computed(() => {
   if (props.levelKey) {
-    return getLevelByKey(props.levelKey);
+    return getLevelByKey(globalStore.allLevels, props.levelKey);
   }
-  return allLevels[0];
+  return globalStore.allLevels[0] || {};
 });
 
 const result = ref<QueryExecResult[]>([]);
@@ -110,7 +112,7 @@ watch([level], () => {
  * @param answerRes
  * @param errorMsg
  */
-const onSubmit = (
+const onSubmit = async (
   sql: string,
   res: QueryExecResult[],
   answerRes: QueryExecResult[],
@@ -132,7 +134,7 @@ const onSubmit = (
   
   // 智能诊断：当结果错误且没有语法错误时触发
   if (resultStatus.value === RESULT_STATUS_ENUM.ERROR && !errorMsg) {
-    diagnosisResults.value = diagnoseSql(sql, level.value.answer);
+    diagnosisResults.value = await diagnoseSql(sql, level.value.answer);
     
     // 3. 错误时的推荐策略 (如果 K 值过低，触发推荐)
     const rec = knowledgeStore.getRecommendation();

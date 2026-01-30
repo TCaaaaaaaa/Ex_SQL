@@ -1,16 +1,9 @@
-import mainLevels from "./mainLevels";
-import customLevels from "./customLevels";
-
-/**
- * 全部关卡
- */
-export const allLevels = [...mainLevels, ...customLevels];
-
 /**
  * 根据 key 获取关卡
+ * @param allLevels
  * @param levelKey
  */
-export const getLevelByKey = (levelKey: string) => {
+export const getLevelByKey = (allLevels: any[], levelKey: string) => {
   return (
     allLevels.find((level) => {
       return level.key === levelKey;
@@ -20,21 +13,23 @@ export const getLevelByKey = (levelKey: string) => {
 
 /**
  * 获取当前关卡位置
+ * @param allLevels
  * @param currentLevel
  */
-export const getCurrentLevelNum = (currentLevel: LevelType) => {
+export const getCurrentLevelNum = (allLevels: any[], currentLevel: any) => {
   return allLevels.findIndex(
-    (level: LevelType) => level.key === currentLevel.key
+    (level: any) => level.key === currentLevel.key
   );
 };
 
 /**
  * 上一关
  *
+ * @param allLevels
  * @param currentLevel
  */
-export const getPrevLevel = (currentLevel: LevelType) => {
-  const num = getCurrentLevelNum(currentLevel);
+export const getPrevLevel = (allLevels: any[], currentLevel: any) => {
+  const num = getCurrentLevelNum(allLevels, currentLevel);
   if (num <= 0) {
     return;
   }
@@ -44,10 +39,11 @@ export const getPrevLevel = (currentLevel: LevelType) => {
 /**
  * 下一关
  *
+ * @param allLevels
  * @param currentLevel
  */
-export const getNextLevel = (currentLevel: LevelType) => {
-  const num = getCurrentLevelNum(currentLevel);
+export const getNextLevel = (allLevels: any[], currentLevel: any) => {
+  const num = getCurrentLevelNum(allLevels, currentLevel);
   if (num >= allLevels.length - 1) {
     return;
   }

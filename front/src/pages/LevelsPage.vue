@@ -77,11 +77,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRouter } from "vue-router";
-import mainLevels from "../levels/mainLevels";
-import customLevels from "../levels/customLevels";
+import { useGlobalStore } from "../core/globalStore";
 
 const router = useRouter();
+const globalStore = useGlobalStore();
+
+const mainLevels = computed(() => globalStore.allLevels.filter(l => l.type === 'main'));
+const customLevels = computed(() => globalStore.allLevels.filter(l => l.type === 'custom'));
 
 const goToLevel = (levelKey: string) => {
   router.push(`/learn/${levelKey}`);
