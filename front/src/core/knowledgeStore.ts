@@ -3,6 +3,7 @@ import { KnowledgePoint, LevelKnowledgeMap, KnowledgeDependency } from './knowle
 import { message } from 'ant-design-vue';
 import { useUserStore } from './userStore';
 import { useGlobalStore } from './globalStore';
+import { api } from '../api';
 
 // 关联函数参数
 const W1 = 1.5; // 正确率权重 (Score)
@@ -56,11 +57,21 @@ export const useKnowledgeStore = defineStore('knowledge', {
   },
 
   actions: {
+    // 同步后端数据到本地
+    syncFromBackend(userId: string, knowledgeMap: Record<string, KnowledgeStatus>) {
+        if (!this.userKnowledgeMap[userId]) {
+            this.userKnowledgeMap[userId] = {};
+        }
+        // 合并策略：以后端为准，或者合并？
+        // 这里简单覆盖
+        this.userKnowledgeMap[userId] = knowledgeMap;
+    },
+
     /**
      * 更新知识点状态 (核心算法 Step 1 & 4)
      * K(x) = w1 * Score + w2 * (1 - Time/Limit) - Bias
      */
-    updateState(levelKey: string, isCorrect: boolean, timeSeconds: number) {
+    async updateState(levelKey: string, isCorrect: boolean, timeSeconds: number) {
       this.lastLevelKey = levelKey;
       const kps = LevelKnowledgeMap[levelKey];
       
@@ -68,6 +79,8 @@ export const useKnowledgeStore = defineStore('knowledge', {
 
       const userStore = useUserStore();
       const userId = userStore.currentUser;
+      
+      // ... (原有计算逻辑不变)
       
       // 确保当前用户有数据结构
       if (!this.userKnowledgeMap[userId]) {
@@ -84,17 +97,12 @@ export const useKnowledgeStore = defineStore('knowledge', {
       const kInstance = (W1 * score) + (W2 * timeScore) - BIAS;
 
       // 2. 更新累积 K 值 (Accumulated K)
-      // 采用移动平均或累加逻辑，这里采用累加但有衰减，模拟记忆曲线
       kps.forEach(kp => {
         const current = currentUserMap[kp] || { kValue: 0, state: ExtensionState.EXTENSION, lastUpdated: 0 };
         
-        // 简单的累加模型，但也引入衰减 (每次更新前，旧值 * 0.9)
         let newK = (current.kValue * 0.9) + kInstance;
-        
-        // 限制 K 值范围 [-5, 5] 防止溢出
         newK = Math.max(-5, Math.min(5, newK));
         
-        // 3. 判定域状态 (Step 1)
         let newState: ExtensionState;
         if (newK >= 1) newState = ExtensionState.STABLE_POSITIVE;
         else if (newK >= 0) newState = ExtensionState.POSITIVE_EDGE;
@@ -109,7 +117,17 @@ export const useKnowledgeStore = defineStore('knowledge', {
         
         console.log(`[Knowledge Update] User: ${userId}, KP: ${kp}, Delta: ${kInstance.toFixed(2)}, New K: ${newK.toFixed(2)}, State: ${newState}`);
       });
+
+      // --- 新增：异步同步到后端 ---
+      try {
+        await api.updateUserKnowledge(userId, currentUserMap);
+      } catch (e) {
+        console.error("Failed to sync knowledge to backend", e);
+      }
     },
+
+    // ... (rest of actions)
+
 
     /**
      * 获取推荐策略 (核心算法 Step 3)

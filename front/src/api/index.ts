@@ -36,5 +36,39 @@ export const api = {
       body: JSON.stringify({ user_sql: userSql, answer_sql: answerSql }),
     });
     return res.json();
+  },
+
+  // --- 用户相关 API ---
+
+  async getUsers() {
+    const res = await fetch(`${BASE_URL}/users/`);
+    return res.json();
+  },
+
+  async createUser(username: string) {
+    const res = await fetch(`${BASE_URL}/users/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!res.ok) {
+        throw new Error((await res.json()).detail);
+    }
+    return res.json();
+  },
+
+  async getUser(username: string) {
+    const res = await fetch(`${BASE_URL}/users/${username}`);
+    if (!res.ok) return null;
+    return res.json();
+  },
+
+  async updateUserKnowledge(username: string, knowledgeMap: any) {
+    const res = await fetch(`${BASE_URL}/users/${username}/knowledge`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ knowledge_map: knowledgeMap }),
+    });
+    return res.json();
   }
 };

@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { computed, toRefs, watch } from "vue";
-import mainLevels from "../levels/mainLevels";
+import { useGlobalStore } from "../core/globalStore";
 import { getCurrentLevelNum, getNextLevel, getPrevLevel } from "../levels";
 import { useRouter } from "vue-router";
 import { RESULT_STATUS_ENUM } from "../core/result";
@@ -47,8 +47,12 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {});
 const { level } = toRefs(props);
 const router = useRouter();
+const globalStore = useGlobalStore();
+
+const mainLevels = computed(() => globalStore.allLevels.filter(l => l.type === 'main'));
+
 const levelNum = computed(() => {
-  return getCurrentLevelNum(level.value);
+  return getCurrentLevelNum(globalStore.allLevels, level.value);
 });
 
 /**
@@ -75,7 +79,7 @@ const doWin = () => {
  * 上一关
  */
 const toPrevLevel = () => {
-  const toLevel = getPrevLevel(level.value);
+  const toLevel = getPrevLevel(globalStore.allLevels, level.value);
   if (toLevel) {
     router.push(`/learn/${toLevel.key}`);
   }
@@ -85,7 +89,7 @@ const toPrevLevel = () => {
  * 下一关
  */
 const toNextLevel = () => {
-  const toLevel = getNextLevel(level.value);
+  const toLevel = getNextLevel(globalStore.allLevels, level.value);
   if (toLevel) {
     router.push(`/learn/${toLevel.key}`);
   }

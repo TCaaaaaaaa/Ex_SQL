@@ -128,7 +128,9 @@ const router = useRouter();
 const userStore = useUserStore();
 const globalStore = useGlobalStore();
 
+// 初始化全局数据和用户数据
 globalStore.init();
+userStore.init();
 
 const selectedKeys = computed(() => [route.path]);
 
