@@ -1,0 +1,40 @@
+# ExtenicSQL Root Gitignore
+
+# IDE & Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Frontend (Node.js)
+front/node_modules/
+front/dist/
+front/.output/
+front/.nuxt/
+front/.vercel/
+front/*.log
+front/npm-debug.log*
+front/yarn-debug.log*
+front/yarn-error.log*
+front/.env.local
+front/.env.*.local
+
+# Backend (Python)
+back/__pycache__/
+back/*.py[cod]
+back/*$py.class
+back/venv/
+back/.venv/
+back/env/
+back/*.db
+back/*.sqlite3
+back/.env
+back/.coverage
+back/htmlcov/
+back/.pytest_cache/
+
+# Project Specific
+*.log
+tmp/
+temp/

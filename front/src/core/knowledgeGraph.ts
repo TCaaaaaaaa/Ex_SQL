@@ -20,6 +20,32 @@ export enum KnowledgePoint {
   FUNCTIONS = 'FUNCTIONS', // 常用函数
 }
 
+export const KnowledgePointLabels: Record<KnowledgePoint, string> = {
+  [KnowledgePoint.BASIC_SELECT]: '基础查询',
+  [KnowledgePoint.COLUMN_ALIAS]: '列别名',
+  [KnowledgePoint.WHERE_CLAUSE]: '条件查询',
+  [KnowledgePoint.OPERATORS]: '运算符',
+  [KnowledgePoint.LIKE_MATCH]: '模糊查询',
+  [KnowledgePoint.NULL_HANDLE]: '空值处理',
+  [KnowledgePoint.ORDER_BY]: '排序',
+  [KnowledgePoint.LIMIT_OFFSET]: '分页',
+  [KnowledgePoint.AGGREGATION]: '聚合函数',
+  [KnowledgePoint.GROUP_BY]: '分组',
+  [KnowledgePoint.HAVING_CLAUSE]: '分组筛选',
+  [KnowledgePoint.DISTINCT]: '去重',
+  [KnowledgePoint.MULTI_TABLE]: '多表查询',
+  [KnowledgePoint.JOIN_INNER]: '内连接',
+  [KnowledgePoint.JOIN_LEFT]: '左连接',
+  [KnowledgePoint.SUBQUERY]: '子查询',
+  [KnowledgePoint.UNION]: '组合查询',
+  [KnowledgePoint.FUNCTIONS]: '常用函数',
+};
+
+export function getKnowledgeLabel(kp: KnowledgePoint | string): string {
+  const label = KnowledgePointLabels[kp as KnowledgePoint];
+  return label ? `${label} (${kp})` : kp;
+}
+
 // 关卡到知识点的映射 (根据题目内容推断)
 export const LevelKnowledgeMap: Record<string, KnowledgePoint[]> = {
   'level1': [KnowledgePoint.BASIC_SELECT],

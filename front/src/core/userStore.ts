@@ -20,20 +20,56 @@ export const useUserStore = defineStore('user', {
 
   actions: {
     async init() {
-      // 从后端获取所有用户列表
-      try {
-        const users = await api.getUsers();
-        this.users = users.map((u: any) => u.username);
-        
-        // 如果当前没有选中用户且列表不为空，默认选中第一个
-        if (!this.currentUser && this.users.length > 0) {
-           this.setCurrentUser(this.users[0]);
+      // 检查是否有持久化的用户
+      if (this.currentUser) {
+        // 尝试获取用户信息验证有效性 (可选)
+        try {
+          await api.getUser(this.currentUser);
+        } catch (e) {
+          // 如果获取失败，可能用户已不存在，登出
+          this.logout();
         }
-      } catch (e) {
-        console.error("Failed to fetch users", e);
       }
     },
 
+    async login(username: string, password?: string) {
+        try {
+            await api.login(username, password);
+            this.currentUser = username;
+            if (!this.users.includes(username)) {
+                this.users.push(username);
+            }
+            // 同步知识状态
+            const user = await api.getUser(username);
+            if (user && user.knowledge_map) {
+                const knowledgeStore = useKnowledgeStore();
+                knowledgeStore.syncFromBackend(username, user.knowledge_map);
+            }
+        } catch (e) {
+            console.error("Login failed", e);
+            throw e;
+        }
+    },
+
+    async register(username: string, password?: string) {
+        try {
+            await api.createUser(username, password);
+            // 注册成功后自动登录
+            await this.login(username, password);
+        } catch (e) {
+            console.error("Register failed", e);
+            throw e;
+        }
+    },
+
+    logout() {
+        this.currentUser = '';
+        // 可以选择是否清空 users 列表，这里保留历史登录过的用户列表供参考，或者也可以清空
+        // this.users = []; 
+        window.location.reload();
+    },
+
+    // Deprecated: use login instead
     async setCurrentUser(username: string) {
       if (!username) return;
       

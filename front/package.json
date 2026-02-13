@@ -12,6 +12,7 @@
     "@bytemd/plugin-highlight": "^1.21.0",
     "@bytemd/vue-next": "^1.21.0",
     "ant-design-vue": "^3.2.11",
+    "echarts": "^6.0.0",
     "github-markdown-css": "^5.2.0",
     "lodash": "^4.17.21",
     "monaco-editor": "^0.34.0",
@@ -21,6 +22,7 @@
     "sql-formatter": "^9.2.0",
     "sql.js": "^1.7.0",
     "vue": "^3.2.37",
+    "vue-echarts": "^8.0.1",
     "vue-router": "4"
   },
   "devDependencies": {

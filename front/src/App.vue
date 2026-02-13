@@ -18,6 +18,10 @@
         >
           <a-menu-item key="/learn">学习</a-menu-item>
           <a-menu-item key="/levels">关卡</a-menu-item>
+          <a-menu-item key="/dashboard">
+            <template #icon><DashboardOutlined /></template>
+            数据看板
+          </a-menu-item>
           <a-menu-item key="/playground">广场</a-menu-item>
           <a-menu-item>
             <a href="https://www.code-nav.cn" target="_blank">
@@ -41,7 +45,7 @@
       </a-col>
       
       <!-- 用户切换组件 -->
-      <a-col>
+      <a-col v-if="userStore.currentUser">
          <a-dropdown>
             <a-button type="link" class="user-btn">
                <UserOutlined />
@@ -50,14 +54,10 @@
             </a-button>
             <template #overlay>
               <a-menu @click="handleUserMenuClick">
-                <a-menu-item v-for="user in userStore.users" :key="user">
-                  <span v-if="user === userStore.currentUser" style="color: #1890ff">✓ {{ user }}</span>
-                  <span v-else>{{ user }}</span>
+                <a-menu-item key="LOGOUT">
+                  <LogoutOutlined /> 退出登录
                 </a-menu-item>
                 <a-menu-divider />
-                <a-menu-item key="ADD_USER">
-                  <PlusOutlined /> 新建用户
-                </a-menu-item>
                 <a-menu-item key="EXPORT_DATA">
                   <DownloadOutlined /> 导出档案
                 </a-menu-item>
@@ -86,15 +86,6 @@
     </div>
     <a-back-top :style="{ right: '24px' }" />
     
-    <!-- 新建用户弹窗 -->
-    <a-modal
-      v-model:visible="isAddUserModalVisible"
-      title="新建用户"
-      @ok="handleAddUser"
-    >
-      <a-input v-model:value="newUserName" placeholder="请输入用户名" />
-    </a-modal>
-
     <!-- 隐藏的文件上传 Input -->
     <input
       type="file"
@@ -114,9 +105,10 @@ import {
   SolutionOutlined,
   UserOutlined,
   DownOutlined,
-  PlusOutlined,
+  LogoutOutlined,
   DownloadOutlined,
-  UploadOutlined
+  UploadOutlined,
+  DashboardOutlined
 } from "@ant-design/icons-vue";
 import { useUserStore } from "./core/userStore";
 import { useGlobalStore } from "./core/globalStore";
@@ -137,8 +129,6 @@ const selectedKeys = computed(() => [route.path]);
 // 获取当前年份
 const currentYear = computed(() => new Date().getFullYear());
 
-const isAddUserModalVisible = ref(false);
-const newUserName = ref('');
 const fileInputRef = ref<HTMLInputElement>();
 
 const doClickMenu = ({ key }: any) => {
@@ -150,36 +140,14 @@ const doClickMenu = ({ key }: any) => {
 };
 
 const handleUserMenuClick = ({ key }: any) => {
-    if (key === 'ADD_USER') {
-        newUserName.value = '';
-        isAddUserModalVisible.value = true;
+    if (key === 'LOGOUT') {
+        userStore.logout();
     } else if (key === 'EXPORT_DATA') {
         exportUserData();
     } else if (key === 'IMPORT_DATA') {
         fileInputRef.value?.click();
-    } else {
-        userStore.setCurrentUser(key);
-        message.success(`已切换为用户: ${key}`);
-        window.location.reload();
     }
 };
-
-const handleAddUser = () => {
-    if (!newUserName.value) {
-        message.warn('用户名不能为空');
-        return;
-    }
-    if (userStore.users.includes(newUserName.value)) {
-        message.warn('用户已存在');
-        return;
-    }
-    userStore.addUser(newUserName.value);
-    message.success('创建成功');
-    isAddUserModalVisible.value = false;
-    // 自动切换到新用户
-    userStore.setCurrentUser(newUserName.value);
-    window.location.reload();
-}
 
 const handleFileChange = (e: Event) => {
     const files = (e.target as HTMLInputElement).files;

@@ -64,7 +64,8 @@ watchEffect(async () => {
   }
   // 初始化 / 更新 DB
   db.value = await initDB(level.value.initSQL);
-  doSubmit();
+  // 移除自动提交，避免页面加载时触发推荐弹窗
+  // doSubmit();
 });
 
 /**
@@ -98,7 +99,7 @@ const doSubmit = async () => {
     return;
   }
   const inputStr = toRaw(inputEditor.value).getValue();
-  console.log("inputStr", inputStr);
+  // console.log("inputStr", inputStr);
   try {
     const result = await runSQL(db.value, inputStr);
     const answerResult = await runSQL(db.value, level.value.answer);

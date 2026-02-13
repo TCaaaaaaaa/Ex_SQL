@@ -13,7 +13,11 @@ class UserBase(BaseModel):
     username: str
 
 class UserCreate(UserBase):
-    pass
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 class UserResponse(UserBase):
     id: int
@@ -38,11 +42,24 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exists")
     
-    new_user = User(username=user.username, knowledge_map={})
+    new_user = User(username=user.username, password=user.password, knowledge_map={})
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
     return new_user
+
+@router.post("/login", response_model=UserResponse)
+async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).filter(User.username == user.username))
+    existing_user = result.scalars().first()
+    if not existing_user:
+        raise HTTPException(status_code=400, detail="User not found")
+    
+    # Simple password check (plain text as requested)
+    if existing_user.password != user.password:
+        raise HTTPException(status_code=400, detail="Incorrect password")
+        
+    return existing_user
 
 @router.get("/{username}", response_model=UserResponse)
 async def get_user(username: str, db: AsyncSession = Depends(get_db)):

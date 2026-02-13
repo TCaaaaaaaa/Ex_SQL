@@ -24,6 +24,7 @@
               :answer-result="answerResult"
               :error-msg="errorMsgRef"
               :diagnosis-results="diagnosisResults"
+              :llm-feedback="llmFeedback"
               style="margin-top: 16px"
             />
           </a-collapse-panel>
@@ -43,6 +44,9 @@
               :editor-style="{ minHeight: '400px' }"
               read-only
             />
+          </a-collapse-panel>
+          <a-collapse-panel key="knowledge" header="📊 你的知识状态 (K值)">
+            <knowledge-chart />
           </a-collapse-panel>
         </a-collapse>
       </a-col>
@@ -64,8 +68,9 @@ import CodeEditor from "../components/CodeEditor.vue";
 import { diagnoseSql, DiagnosisResult } from "../core/sqlDiagnosis";
 import { useKnowledgeStore } from "../core/knowledgeStore";
 import { useGlobalStore } from "../core/globalStore";
-import { Modal } from "ant-design-vue";
+import { Modal, message } from "ant-design-vue";
 import { useRouter } from "vue-router";
+import KnowledgeChart from "../components/KnowledgeChart.vue";
 
 interface IndexPageProps {
   levelKey?: string;
@@ -88,6 +93,7 @@ const answerResult = ref<QueryExecResult[]>([]);
 const errorMsgRef = ref<string>();
 const resultStatus = ref<number>(-1);
 const diagnosisResults = ref<DiagnosisResult[]>([]);
+const llmFeedback = ref<string>(""); // 新增 LLM 反馈
 const defaultActiveKeys = ["result"];
 const activeKeys = ref([...defaultActiveKeys]);
 const startTime = ref(Date.now()); // 记录开始时间
@@ -102,6 +108,7 @@ watch([level], () => {
   errorMsgRef.value = "";
   resultStatus.value = -1;
   diagnosisResults.value = [];
+  llmFeedback.value = ""; // 重置反馈
   startTime.value = Date.now(); // 重置计时
 });
 
@@ -134,25 +141,60 @@ const onSubmit = async (
   
   // 智能诊断：当结果错误且没有语法错误时触发
   if (resultStatus.value === RESULT_STATUS_ENUM.ERROR && !errorMsg) {
-    diagnosisResults.value = await diagnoseSql(sql, level.value.answer);
+    const diagnosisRes: any = await diagnoseSql(sql, level.value.answer);
     
-    // 3. 错误时的推荐策略 (如果 K 值过低，触发推荐)
-    const rec = knowledgeStore.getRecommendation();
-    // 只有当建议是“分解”或“微调”时才打断用户
-    if (rec && (rec.type === 'DECOMPOSE' || rec.type === 'REVIEW') && rec.levelKey !== level.value.key) {
-       Modal.confirm({
-          title: '💡 学习路径推荐',
-          content: rec.reason,
-          okText: '接受建议',
-          cancelText: '我再试试',
-          onOk() {
-              router.push(`/learn/${rec.levelKey}`);
-          }
-      });
+    // 兼容后端返回结构: { results: [], llm_feedback: "" }
+    if (diagnosisRes.results) {
+        diagnosisResults.value = diagnosisRes.results;
+        llmFeedback.value = diagnosisRes.llm_feedback;
+    } else {
+        // 旧接口兼容
+        diagnosisResults.value = diagnosisRes;
     }
-
   } else {
     diagnosisResults.value = [];
+  }
+
+  // 3. 推荐策略触发 (无论是对是错，都检查一下 K 值状态)
+  const rec = knowledgeStore.getRecommendation();
+  
+  // 场景 1: 负向反馈 (分解/复习) - 仅在做错时强弹窗
+  if (resultStatus.value === RESULT_STATUS_ENUM.ERROR && rec && (rec.type === 'DECOMPOSE' || rec.type === 'REVIEW') && rec.levelKey !== level.value.key) {
+     Modal.confirm({
+        title: '💡 学习路径推荐',
+        content: rec.reason,
+        okText: '接受建议',
+        cancelText: '我再试试',
+        onOk() {
+            router.push(`/learn/${rec.levelKey}`);
+        }
+    });
+  }
+
+  // 场景 2: 正向反馈 (挑战/下一关) - 仅在做对时弹窗
+  if (resultStatus.value === RESULT_STATUS_ENUM.SUCCEED && rec && (rec.type === 'CHALLENGE' || rec.type === 'NEXT')) {
+     // 延迟一点弹出，让用户先看到成功的烟花/提示
+     setTimeout(() => {
+         Modal.success({
+            title: '🎉 恭喜过关！',
+            content: rec.reason,
+            okText: rec.type === 'CHALLENGE' ? '接受挑战' : '下一关',
+            onOk() {
+                if (rec.levelKey === 'NEXT') {
+                    // 简单的下一关逻辑：当前 index + 1
+                    const currentIndex = globalStore.allLevels.findIndex(l => l.key === level.value.key);
+                    const nextLevel = globalStore.allLevels[currentIndex + 1];
+                    if (nextLevel) {
+                        router.push(`/learn/${nextLevel.key}`);
+                    } else {
+                        message.success("恭喜你通关了所有关卡！");
+                    }
+                } else {
+                    router.push(`/learn/${rec.levelKey}`);
+                }
+            }
+        });
+     }, 1000);
   }
 };
 

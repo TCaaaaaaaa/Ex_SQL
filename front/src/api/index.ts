@@ -29,11 +29,11 @@ export const api = {
     return res.json();
   },
 
-  async diagnoseSql(userSql: string, answerSql: string) {
+  async diagnoseSql(userSql: string, answerSql: string, initSql: string) {
     const res = await fetch(`${BASE_URL}/sql/diagnose`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_sql: userSql, answer_sql: answerSql }),
+      body: JSON.stringify({ user_sql: userSql, answer_sql: answerSql, init_sql: initSql }),
     });
     return res.json();
   },
@@ -45,11 +45,23 @@ export const api = {
     return res.json();
   },
 
-  async createUser(username: string) {
+  async createUser(username: string, password?: string) {
     const res = await fetch(`${BASE_URL}/users/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username }),
+      body: JSON.stringify({ username, password: password || '123456' }), // Default password if not provided
+    });
+    if (!res.ok) {
+        throw new Error((await res.json()).detail);
+    }
+    return res.json();
+  },
+
+  async login(username: string, password?: string) {
+    const res = await fetch(`${BASE_URL}/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password: password || '123456' }),
     });
     if (!res.ok) {
         throw new Error((await res.json()).detail);

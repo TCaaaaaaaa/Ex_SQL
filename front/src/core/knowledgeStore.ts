@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { KnowledgePoint, LevelKnowledgeMap, KnowledgeDependency } from './knowledgeGraph';
+import { KnowledgePoint, LevelKnowledgeMap, KnowledgeDependency, getKnowledgeLabel } from './knowledgeGraph';
 import { message } from 'ant-design-vue';
 import { useUserStore } from './userStore';
 import { useGlobalStore } from './globalStore';
@@ -10,6 +10,12 @@ const W1 = 1.5; // 正确率权重 (Score)
 const W2 = 0.5; // 时间效率权重 (Time)
 const BIAS = 0.5; // 偏差值
 const TIME_LIMIT = 60; // 假设基准时间 60秒
+const MAX_TIME_PENALTY_RATIO = 2; // 最大时间惩罚倍数
+const HISTORY_DECAY_FACTOR = 0.9; // 历史记忆保留率
+const MAX_K_VALUE = 5; // K值上限
+const MIN_K_VALUE = -5; // K值下限
+const MAX_HISTORY_LENGTH = 20; // 历史记录最大长度
+const INITIAL_MIN_K = 999; // 初始最小K值
 
 // 域状态定义
 export enum ExtensionState {
@@ -23,6 +29,7 @@ interface KnowledgeStatus {
   kValue: number;
   state: ExtensionState;
   lastUpdated: number;
+  history: { time: number; value: number }[]; // 新增历史记录字段
 }
 
 interface Recommendation {
@@ -90,7 +97,7 @@ export const useKnowledgeStore = defineStore('knowledge', {
 
       // 1. 计算本次表现的 K 值增量 (Delta K)
       const score = isCorrect ? 1 : -1; // 正确 +1，错误 -1
-      const timeRatio = Math.min(timeSeconds / TIME_LIMIT, 2); // 限制最大时间惩罚
+      const timeRatio = Math.min(timeSeconds / TIME_LIMIT, MAX_TIME_PENALTY_RATIO); // 限制最大时间惩罚
       const timeScore = 1 - timeRatio; // 时间越短越好
       
       // 单次关联度 k_instance
@@ -98,10 +105,15 @@ export const useKnowledgeStore = defineStore('knowledge', {
 
       // 2. 更新累积 K 值 (Accumulated K)
       kps.forEach(kp => {
-        const current = currentUserMap[kp] || { kValue: 0, state: ExtensionState.EXTENSION, lastUpdated: 0 };
+        const current = currentUserMap[kp] || { 
+          kValue: 0, 
+          state: ExtensionState.EXTENSION, 
+          lastUpdated: 0,
+          history: [] 
+        };
         
-        let newK = (current.kValue * 0.9) + kInstance;
-        newK = Math.max(-5, Math.min(5, newK));
+        let newK = (current.kValue * HISTORY_DECAY_FACTOR) + kInstance;
+        newK = Math.max(MIN_K_VALUE, Math.min(MAX_K_VALUE, newK));
         
         let newState: ExtensionState;
         if (newK >= 1) newState = ExtensionState.STABLE_POSITIVE;
@@ -109,13 +121,19 @@ export const useKnowledgeStore = defineStore('knowledge', {
         else if (newK >= -1) newState = ExtensionState.EXTENSION;
         else newState = ExtensionState.NEGATIVE;
 
+        // 维护历史记录 (只保留最近 20 次，避免数据膨胀)
+        const newHistory = [...(current.history || []), { time: Date.now(), value: parseFloat(newK.toFixed(2)) }];
+        if (newHistory.length > MAX_HISTORY_LENGTH) newHistory.shift();
+
         currentUserMap[kp] = {
           kValue: parseFloat(newK.toFixed(2)),
           state: newState,
-          lastUpdated: Date.now()
+          lastUpdated: Date.now(),
+          history: newHistory
         };
         
-        console.log(`[Knowledge Update] User: ${userId}, KP: ${kp}, Delta: ${kInstance.toFixed(2)}, New K: ${newK.toFixed(2)}, State: ${newState}`);
+        // Removed console.log for production
+        // console.log(`[Knowledge Update] User: ${userId}, KP: ${kp}, Delta: ${kInstance.toFixed(2)}, New K: ${newK.toFixed(2)}, State: ${newState}`);
       });
 
       // --- 新增：异步同步到后端 ---
@@ -145,7 +163,7 @@ export const useKnowledgeStore = defineStore('knowledge', {
       // 检查当前关卡涉及的知识点状态
       // 优先处理最差的状态
       let worstKp = currentKps[0];
-      let minK = 999;
+      let minK = INITIAL_MIN_K;
 
       currentKps.forEach(kp => {
         const status = currentUserMap[kp];
@@ -170,7 +188,7 @@ export const useKnowledgeStore = defineStore('knowledge', {
              return {
                type: 'DECOMPOSE',
                levelKey: level.key,
-               reason: `检测到你对 [${worstKp}] 掌握不牢固，建议先复习基础知识点 [${depKp}]。`
+               reason: `检测到你对 [${getKnowledgeLabel(worstKp)}] 掌握不牢固，建议先复习基础知识点 [${getKnowledgeLabel(depKp)}]。`
              };
           }
         }
@@ -186,25 +204,34 @@ export const useKnowledgeStore = defineStore('knowledge', {
            return {
              type: 'REVIEW',
              levelKey: similarLevel.key,
-             reason: `你处于学习临界区，建议通过练习相似关卡 [${similarLevel.title}] 来巩固 [${worstKp}]。`
+             reason: `你处于学习临界区，建议通过练习相似关卡 [${similarLevel.title}] 来巩固 [${getKnowledgeLabel(worstKp)}]。`
            };
          } else {
             return {
              type: 'REVIEW',
              levelKey: this.lastLevelKey,
-             reason: `你处于学习临界区，建议再次挑战本关以巩固 [${worstKp}]。`
+             reason: `你处于学习临界区，建议再次挑战本关以巩固 [${getKnowledgeLabel(worstKp)}]。`
            };
          }
       }
 
-      // 场景 C: 稳定正域 (K >= 1) -> 扩充变换
-      // 推荐下一关 (默认逻辑)
+      // 场景 C: 稳定正域 (K >= 1) -> 扩充变换 (Extension Transformation)
+      // 推荐更有挑战性的关卡 (包含更多知识点或更难的知识点)
       if (status.state === ExtensionState.STABLE_POSITIVE) {
-         // 这里简单推荐下一关，实际可以推荐包含 复合KP 的难关
+         const nextChallenge = this.findChallengingLevel(currentKps, this.lastLevelKey);
+         if (nextChallenge) {
+             return {
+                 type: 'CHALLENGE',
+                 levelKey: nextChallenge.key,
+                 reason: `你已经完全掌握了 [${getKnowledgeLabel(worstKp)}] (K=${status.kValue})，建议尝试更有挑战性的 [${nextChallenge.title}]！`
+             };
+         }
+         
+         // 兜底逻辑：推荐下一关
          return {
             type: 'NEXT',
-            levelKey: 'NEXT', // 特殊标记，由 UI 处理
-            reason: `你已经完全掌握了 [${worstKp}] (K=${status.kValue})，继续挑战下一关吧！`
+            levelKey: 'NEXT', 
+            reason: `你已经完全掌握了 [${getKnowledgeLabel(worstKp)}] (K=${status.kValue})，继续挑战下一关吧！`
          };
       }
       
@@ -214,6 +241,28 @@ export const useKnowledgeStore = defineStore('knowledge', {
           levelKey: 'NEXT',
           reason: `表现不错，继续加油！`
       };
+    },
+
+    // 辅助：寻找更有挑战性的关卡
+    // 逻辑：找到包含当前知识点，且还包含其他未掌握知识点的关卡
+    findChallengingLevel(currentKps: string[], currentKey: string) {
+        const globalStore = useGlobalStore();
+        // 简单实现：找一个包含当前KP，且总KP数量更多的关卡
+        for (const level of globalStore.allLevels) {
+            if (level.key === currentKey) continue;
+            
+            const levelKps = LevelKnowledgeMap[level.key];
+            if (!levelKps) continue;
+            
+            // 必须包含当前关卡的所有知识点 (扩充变换 T_expand)
+            const hasAllCurrent = currentKps.every(kp => levelKps.includes(kp as KnowledgePoint));
+            
+            // 且必须有新的知识点
+            if (hasAllCurrent && levelKps.length > currentKps.length) {
+                return level;
+            }
+        }
+        return null;
     },
 
     // 辅助：根据 KP 找关卡

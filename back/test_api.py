@@ -26,6 +26,15 @@ def test_backend():
         })
         print(f"Check result: {check_res.json()['is_correct']}")
 
+        print(f"Testing /sql/diagnose (with LLM)...")
+        # 故意构造一个错误的 SQL
+        wrong_sql = "SELECT * FROM student" # 假设缺少条件
+        diag_res = requests.post(f"{base_url}/sql/diagnose", json={
+            "user_sql": wrong_sql,
+            "answer_sql": level["answer"]
+        })
+        print(f"Diagnosis Response: {diag_res.json()}")
+
 if __name__ == "__main__":
     try:
         test_backend()

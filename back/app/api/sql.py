@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from app.core.executor import SQLExecutor
 from app.core.diagnosis import SQLDiagnosis
+from app.core.llm import llm_service
 
 router = APIRouter()
 
@@ -37,7 +38,15 @@ async def check_sql(req: CheckRequest):
 @router.post("/diagnose")
 async def diagnose_sql(req: DiagnoseRequest):
     try:
+        # 1. 规则诊断
         diagnosis = SQLDiagnosis.diagnose(req.user_sql, req.answer_sql)
-        return diagnosis
+        
+        # 2. LLM 增强反馈
+        llm_feedback = llm_service.generate_feedback(req.user_sql, req.answer_sql, diagnosis)
+        
+        return {
+            "results": diagnosis,
+            "llm_feedback": llm_feedback
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 
 class SQLExecutor:
     @staticmethod
-    def execute(sql: str, init_sql: Optional[str] = None) -> List[Dict[str, Any]]:
+    def execute(sql: str, init_sql: Optional[str] = None) -> Dict[str, Any]:
         """
         Execute SQL in an in-memory SQLite database.
         """
@@ -18,8 +18,12 @@ class SQLExecutor:
             cursor.execute(sql)
             
             # Fetch results
-            columns = [description[0] for description in cursor.description]
-            values = cursor.fetchall()
+            if cursor.description:
+                columns = [description[0] for description in cursor.description]
+                values = cursor.fetchall()
+            else:
+                columns = []
+                values = []
             
             results = []
             for row in values:
