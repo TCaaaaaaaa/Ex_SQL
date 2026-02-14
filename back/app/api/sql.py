@@ -21,14 +21,14 @@ class DiagnoseRequest(BaseModel):
     answer_sql: str
 
 @router.post("/execute")
-async def execute_sql(req: ExecuteRequest):
+def execute_sql(req: ExecuteRequest):
     try:
         return SQLExecutor.execute(req.sql, req.init_sql)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/check")
-async def check_sql(req: CheckRequest):
+def check_sql(req: CheckRequest):
     try:
         is_correct = SQLExecutor.check_result(req.user_sql, req.answer_sql, req.init_sql)
         return {"is_correct": is_correct}
@@ -36,7 +36,7 @@ async def check_sql(req: CheckRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/diagnose")
-async def diagnose_sql(req: DiagnoseRequest):
+def diagnose_sql(req: DiagnoseRequest):
     try:
         # 1. 规则诊断
         diagnosis = SQLDiagnosis.diagnose(req.user_sql, req.answer_sql)

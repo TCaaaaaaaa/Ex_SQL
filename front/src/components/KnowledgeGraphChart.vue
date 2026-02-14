@@ -133,7 +133,7 @@ const option = computed(() => {
     backgroundColor: '#fafafa', // Subtle background
     title: {
       text: 'SQL 知识图谱网络',
-      subtext: '基于可拓学 K 值评估',
+      subtext: '节点大小与颜色代表掌握度 (K值)',
       top: 20,
       left: 20,
       textStyle: {
@@ -160,6 +160,9 @@ const option = computed(() => {
                 </div>
                 <div>状态: <span style="color:${data.itemStyle.borderColor}">${categories[data.category].name.split(' ')[0]}</span></div>
                 <div>K值: <b>${data.value}</b></div>
+                <div style="margin-top:4px;padding-top:4px;border-top:1px dashed #eee;">
+                  <span style="font-size:12px;color:#888">K>1:完全掌握; K<0:需复习</span>
+                </div>
             `;
         }
         return `${params.data.source} -> ${params.data.target}`;

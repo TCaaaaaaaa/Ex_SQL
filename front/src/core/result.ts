@@ -7,6 +7,7 @@ export const RESULT_STATUS_ENUM = {
   DEFAULT: -1,
   ERROR: 0,
   SUCCEED: 1,
+  EXECUTED: 2,
 };
 
 /**
@@ -16,6 +17,7 @@ export const RESULT_STATUS_INFO_MAP: Record<number, string> = {
   [-1]: "未执行",
   0: "❌ 错误",
   1: "✅ 正确",
+  2: "✅ 已执行",
 };
 
 /**

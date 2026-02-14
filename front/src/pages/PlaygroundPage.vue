@@ -23,7 +23,11 @@
         </a-card>
       </a-col>
       <a-col :md="12" :xs="24">
-        <sql-result :result="result" />
+        <sql-result
+          :result="result"
+          :error-msg="currErrorMsg"
+          :result-status="currStatus"
+        />
       </a-col>
     </a-row>
   </div>
@@ -35,9 +39,12 @@ import { ref } from "vue";
 import { QueryExecResult } from "sql.js";
 import SqlResult from "../components/SqlResult.vue";
 import { useGlobalStore } from "../core/globalStore";
+import { RESULT_STATUS_ENUM } from "../core/result";
 
 const globalStore = useGlobalStore();
 const result = ref<QueryExecResult[]>([]);
+const currErrorMsg = ref<string>("");
+const currStatus = ref<number>(RESULT_STATUS_ENUM.DEFAULT);
 const sqlHistoryList = ref<any>([]);
 
 /**
@@ -54,6 +61,12 @@ const onSubmit = (
   errorMsg?: string
 ) => {
   result.value = res;
+  currErrorMsg.value = errorMsg || "";
+  if (errorMsg) {
+    currStatus.value = RESULT_STATUS_ENUM.ERROR;
+  } else {
+    currStatus.value = RESULT_STATUS_ENUM.EXECUTED;
+  }
   sqlHistoryList.value.push({
     sql,
     result: res,

@@ -74,11 +74,45 @@ const option = computed(() => {
 
   return {
     title: {
-      text: '知识状态演化轨迹 (K值趋势)',
+      text: '知识掌握度变化趋势 (K值)',
       left: 'center'
     },
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      formatter: (params: any[]) => {
+        let result = `<div style="margin-bottom: 4px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 4px;">练习次数: ${params[0].axisValue}</div>`;
+        
+        params.forEach(item => {
+          const kValue = item.value[1];
+          let status = '';
+          let color = item.color;
+          
+          if (kValue >= 1) {
+            status = '完全掌握 (稳定正域)';
+          } else if (kValue >= 0) {
+            status = '基本掌握 (正域边缘)';
+          } else if (kValue >= -1) {
+            status = '临界状态 (可拓域)';
+          } else {
+            status = '需加强 (负域)';
+          }
+          
+          result += `
+            <div style="margin-top: 6px;">
+              <span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>
+              <span style="font-weight:bold;">${item.seriesName}</span>
+            </div>
+            <div style="padding-left: 14px; font-size: 12px; color: #666;">
+              掌握度(K): <b>${kValue}</b>
+            </div>
+            <div style="padding-left: 14px; font-size: 12px; color: #888;">
+              [${status}]
+            </div>
+          `;
+        });
+        
+        return result;
+      }
     },
     legend: {
       data: legendData,
@@ -98,7 +132,7 @@ const option = computed(() => {
     },
     yAxis: {
       type: 'value',
-      name: '关联度 K(x)',
+      name: '掌握度 (K值)',
       min: -5,
       max: 5
     },
