@@ -1,0 +1,105 @@
+第五章 系统设计与实现
+
+在前两章建立了理论模型（第三章）和推荐算法（第四章）的基础上，本章将详细介绍 ExtenicSQL 教学辅助系统的工程实现。我们将从总体架构、核心模块设计、数据库设计以及系统运行流程四个方面展开阐述。
+
+5.1 系统总体架构设计
+
+ExtenicSQL 系统采用经典的 B/S（Browser/Server）架构，基于前后端分离模式开发。这种架构保证了系统的可扩展性和易维护性。
+
+5.1.1 技术选型
+* 前端（Client Side）：采用 Vue 3 框架，结合 TypeScript 进行强类型开发，使用 Vite 作为构建工具。UI 组件库选用 Ant Design Vue，可视化图表库选用 Apache ECharts。
+* 后端（Server Side）：采用 Python 的 FastAPI 框架。FastAPI 具有高性能（基于 Starlette 和 Pydantic）、易于编写异步代码以及自动生成 OpenAPI 文档的优势，非常适合构建 RESTful API。
+* 数据库（Database）：使用 SQLite 作为嵌入式数据库，轻量且易于部署。ORM（对象关系映射）层采用 SQLAlchemy，简化了数据库操作。
+* 运行环境：支持 Windows/Linux/macOS 跨平台部署，利用 Docker 容器化技术实现一键启动。
+
+5.1.2 架构分层
+系统整体架构分为三层：
+1. 表现层（Presentation Layer）：负责用户交互，包括代码编辑器（Code Editor）、题目展示区、结果反馈区以及知识图谱可视化界面。
+2. 业务逻辑层（Business Logic Layer）：
+   - SQL 解析与执行沙箱（Sandbox）：负责安全执行用户提交的 SQL，并返回结果集。
+   - 诊断引擎（Diagnosis Engine）：实现第三章所述的物元建模与差异分析算法。
+   - 推荐引擎（Recommendation Engine）：实现第四章所述的关联函数计算与路径规划。
+3. 数据访问层（Data Access Layer）：负责与数据库交互，存取题目信息、用户做题记录及知识状态数据。
+
+5.2 核心模块实现
+
+5.2.1 SQL 解析与执行沙箱
+为了防止恶意 SQL（如 DROP TABLE, DELETE），系统实现了一个基于白名单机制的执行沙箱。
+* 代码位置：back/app/core/executor.py
+* 实现逻辑：
+  1. 预检查：使用正则表达式过滤掉 DDL（Data Definition Language）和 DML（Data Manipulation Language）关键字，只允许 SELECT 语句。
+  2. 资源限制：设置查询超时时间（如 2秒）和最大返回行数（如 100行），防止死循环或内存溢出。
+  3. 异常捕获：捕获数据库抛出的 OperationalError，并转化为友好的错误提示。
+
+5.2.2 诊断引擎实现
+这是系统的核心组件，对应第三章的理论模型。
+* 代码位置：back/app/core/diagnosis.py
+* 关键类：SQLDiagnosis
+  - parse_sql(sql): 调用 sql-parser 库将 SQL 转化为 AST，并提取为 SqlMatterElement 对象。
+  - diff(user_elem, std_elem): 对比两个物元对象，生成 DiffResult 列表。
+  - generate_suggestion(diffs): 根据差异类型，匹配预定义的建议模板（如 "建议使用 %s 替换 %s"）。
+
+5.2.3 推荐引擎实现
+负责计算关联函数 K 值并更新用户状态。
+* 代码位置：front/src/core/knowledgeStore.ts (前端计算) 或 back/app/core/recommender.py (后端计算)
+* 实现逻辑：
+  1. 监听用户提交事件（Submit Event）。
+  2. 获取当前题目的知识点标签（Tags）。
+  3. 根据答题结果（Pass/Fail）和耗时（Duration），调用 calculateKValue 函数更新该知识点的 K 值。
+  4. 触发 updateState 方法，重新划分域（稳定正域/可拓域/负域），并更新知识图谱的节点颜色。
+
+5.2.4 可视化知识图谱实现
+利用 ECharts 的力导向图（Force Directed Graph）展示知识点关联。
+* 代码位置：front/src/components/KnowledgeGraphChart.vue
+* 实现细节：
+  - 节点大小映射难度（Difficulty）。
+  - 节点颜色映射 K 值状态：绿色（稳定正域）、黄色（可拓域）、红色（负域）。
+  - 连线表示依赖关系。
+  - 支持缩放、拖拽和点击交互，点击节点可跳转至对应题库。
+
+5.3 数据库设计
+
+系统主要包含以下几张核心数据表：
+
+1. Users 表：存储用户信息及全局知识状态。
+   - id: 主键
+   - username: 用户名
+   - knowledge_map: JSON 类型，存储 {kp_id: {k_value: float, state: string}}，即用户的认知模型快照。
+
+2. Questions 表：存储题目信息。
+   - id: 主键
+   - title: 题目标题
+   - content: 题目描述（Markdown 格式）
+   - std_sql: 标准答案 SQL
+   - db_schema: 题目对应的数据库模式定义
+   - knowledge_points: JSON 数组，关联的知识点 ID 列表。
+
+3. Submissions 表：存储做题记录。
+   - id: 主键
+   - user_id: 外键
+   - question_id: 外键
+   - user_sql: 用户提交的代码
+   - status: 状态（Accepted/Wrong Answer/Error）
+   - diagnosis_result: JSON，存储诊断引擎返回的详细差异分析。
+   - created_at: 提交时间。
+
+5.4 系统运行流程
+
+以一个典型的“学生做题”场景为例：
+1. 学生登录系统，进入“练习模式”。
+2. 前端根据用户的 knowledge_map 调用推荐接口，获取一道适合当前水平的题目（如“查询不及格学生名单”）。
+3. 学生在编辑器中编写 SQL：SELECT name FROM student WHERE score < 60。
+4. 点击“提交运行”。
+5. 后端接收请求：
+   - Step 1: 沙箱执行 SQL，获取结果集。
+   - Step 2: 如果结果错误，调用诊断引擎，生成“特征缺失：缺少学号字段”的建议。
+   - Step 3: 更新 Users 表中的 knowledge_map（K 值变化）。
+   - Step 4: 将执行结果、诊断建议及新的 K 值返回前端。
+6. 前端展示：
+   - 结果区显示“部分正确”及改进建议。
+   - 知识图谱中“WHERE 子句”节点颜色变深（K 值增加）。
+   - 推荐下一题。
+
+5.5 本章小结
+
+本章详细阐述了 ExtenicSQL 系统的工程实现细节。从 Vue3 + FastAPI 的前后端分离架构，到 SQL 沙箱、诊断引擎、推荐引擎等核心模块的代码逻辑，再到数据库表结构的设计，完整展示了一个智能教学系统的构建过程。该系统不仅实现了理论模型的功能落地，还通过可视化手段提升了用户体验，为后续的实验验证提供了可靠的平台支撑。
