@@ -7,8 +7,7 @@ export default {
   initSQL: sql,
   content: md,
   defaultSQL: "select * from student",
-  answer:
-    "select name, score from student where name like '%李%' or score > 500;",
+  answer: "select name, score from student where name like '%李%' or score > 500;",
   hint: "请仔细查看本关给出的示例",
   type: "main",
 } as LevelType;

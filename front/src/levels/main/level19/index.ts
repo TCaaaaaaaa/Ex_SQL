@@ -7,16 +7,7 @@ export default {
   initSQL: sql,
   content: md,
   defaultSQL: "select * from student",
-  answer:
-    "SELECT\n" +
-    "  class_id,\n" +
-    "  SUM(score) AS total_score\n" +
-    "FROM\n" +
-    "  student\n" +
-    "GROUP BY\n" +
-    "  class_id\n" +
-    "HAVING\n" +
-    "  SUM(score) > 150;",
+  answer: "select class_id, sum(score) as total_score from student group by class_id having sum(score) > 150;",
   hint: "请仔细查看本关给出的示例",
   type: "main",
 } as LevelType;

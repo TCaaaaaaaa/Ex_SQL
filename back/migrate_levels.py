@@ -61,8 +61,8 @@ def process_level_dir(dir_path, level_type):
     return data
 
 if __name__ == "__main__":
-    front_levels_path = r"d:\trae_projects\ExtenicSQL\front\src\levels"
-    output_path = r"d:\trae_projects\ExtenicSQL\back\app\data\levels.json"
+    front_levels_path = r"D:\Coding\论文代码\Ex_SQL\front\src\levels"
+    output_path = r"D:\Coding\论文代码\Ex_SQL\back\app\data\levels.json"
     
     levels = migrate_levels(front_levels_path)
     

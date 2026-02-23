@@ -5,3 +5,5 @@ uvicorn
 sqlglot
 pydantic
 python-multipart
+openai
+python-dotenv
